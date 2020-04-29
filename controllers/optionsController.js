@@ -6,24 +6,17 @@ const link_to_vote=require('../modules/supportingModules').combineLink
 const errorHandler=require('../modules/supportingModules').errorHandling
 const host='http://localhost:3000/options'
 
-function addoption(optionId,questionId){
-    questionsDb.findById(questionId,function(err,data){
-        if(err){
-            errorHandler(err,res)
-            return;
-        }
-        data.options.push(optionId)
-        data.save()
-    })
-    return 
-}
+
 
 
 
 //controller to add_vote i.e increment vote count on the option
 module.exports.add_vote=function(req,res){
-    console.log(req.params)
+   // console.log(req.params)
     var message='vote successfully registered to'
+    /**
+     * add vote by inc operation
+     */
     optionsDb.findByIdAndUpdate(req.params.id,{$inc:{'votes':1}},{new:true},function(err,data){
         if(err)
         {
@@ -37,10 +30,16 @@ module.exports.add_vote=function(req,res){
 
 
 //controller to delete a option
-module.exports.delete=function(req,res){
+module.exports.delete=async function(req,res){
     console.log(req.params)
     var message='delete successfull'
-    optionsDb.findByIdAndDelete(req.params.id,async function(err,data){
+    /**
+     * Delete a option from the optionDB and pull the id from respective question
+     */
+    
+        
+    
+      optionsDb.findByIdAndDelete(req.params.id,async function(err,data){
         if(err)
         {
             errorHandler(err,res)
@@ -49,7 +48,7 @@ module.exports.delete=function(req,res){
         if(!data)
             message='option id invalid'
         else{
-           await questionsDb.findById(data.question,function(err,data){
+            questionsDb.findById(data.question,function(err,data){
                 if(err){
                     errorHandler(err,res)
                     return
@@ -58,7 +57,12 @@ module.exports.delete=function(req,res){
                 data.save();
             })
         }
-    return  res.send(200,message)
+        
+    return  res.send(200,{'data':{
+        message:message
+    }
+    }
+        )
         
     })
     
@@ -66,7 +70,7 @@ module.exports.delete=function(req,res){
 
 
 //controller to create  a option
-module.exports.create=function(req,res){
+module.exports.create= async function(req,res){
     /**
      * create the option and add the parent question id
      * retreive the question id and add the option object id to the options list
@@ -74,22 +78,36 @@ module.exports.create=function(req,res){
     console.log(req.query,req.questionId)
      var message='created'
      var id=new mongoose.Types.ObjectId()
-    optionsDb.create(
-        {
-        _id:id,
-        text:req.query.text,
-        question:req.questionId,
-        link_to_vote:link_to_vote(host,'/'+id+'/add_vote')
-        },function(err,data){
-                if(err){
-                    errorHandler(err,res)
-                    return
-                }
-                addoption(id,req.questionId)
-            return res.send(200,{'data':{
-                'option':data
-            }})
-        })
+     questionsDb.findById(req.questionId,function(err,data){
+         if(err){
+             errorHandler(err,res)
+             return;
+         }
+         if(!data)
+            return res.send(404,{'data':{
+            
+                message:'question doesn\'t exist'
+            }
+            });
+            optionsDb.create(
+                {
+                _id:id,
+                text:req.query.text,
+                question:req.questionId,
+                link_to_vote:link_to_vote(host,'/'+id+'/add_vote')
+                },function(err,optiondata){
+                        if(err){
+                            errorHandler(err,res)
+                            return
+                        }
+                    data.options.push(id);
+                    data.save();
+                    return res.send(200,{'data':{
+                        'option':optiondata
+                    }})
+                })
+
+     })
     
 }
 

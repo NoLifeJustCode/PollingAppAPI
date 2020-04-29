@@ -31,6 +31,7 @@ module.exports.delete=function(req,res){
     console.log(req.params)
     /**
      * find question by id and delete the question if found else return appropriate status code and message
+     * delete all options related to the same too
      */
     var message='delete successfull'
     questionsDb.findByIdAndDelete(req.params.id,async function(err,data){
@@ -44,7 +45,7 @@ module.exports.delete=function(req,res){
             message='Question doesn\'t exist'
         else{
             await optionsDb.deleteMany({_id:{$in:data.options}},function(err,n){
-                console.log(n)
+                //console.log(n)
             })
         }
         res.send(200,{'data':{
